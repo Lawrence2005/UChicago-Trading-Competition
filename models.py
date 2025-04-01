@@ -62,6 +62,15 @@ class AKIM(ETF):
 
 class TradingBot:
     """Orchestrates all trading logic."""
+
+    MAX_ORDER_SIZE: int = 40
+    MAX_OPEN_ORDERS: int = 50
+    MAX_OUTSTANDING_VOLUME: int = 120
+    MAX_ABSOLUTE_POSITION: int = 200
+
+    assets: dict[str, Asset]
+    open_orders: list[tuple[str, int]]
+
     def __init__(self):
         self.assets = {
             "APT": Asset("APT"),
@@ -70,6 +79,7 @@ class TradingBot:
             "AKAV": AKAV(),
             "AKIM": AKIM()   # Inverse ETF
         }
+        self.open_orders = []
 
     def update_market_data(self, prices: Dict[str, float]) -> None:
         """Update all asset prices."""
