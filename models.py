@@ -14,7 +14,7 @@ class Asset:
 
     @abc.abstractmethod
     def check_arbitrage(self) -> Optional[dict[str, int]]:
-        return
+        pass
 
 class APT(Asset):
     PE_RATIO: float = 10.0
