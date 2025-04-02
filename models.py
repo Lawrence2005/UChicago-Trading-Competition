@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 import numpy as np
+import abc
 
 class Asset:
     """Base class for all assets (stocks/ETFs)."""
@@ -11,7 +12,13 @@ class Asset:
     def update_price(self, p: float) -> None:
         self.price = p
 
+    @abc.abstractmethod
+    def check_arbitrage(self) -> Optional[dict[str, int]]:
+        return
+
 class APT(Asset):
+    PE_RATIO: float = 10.0
+
     """Large-cap stock with earnings announcements."""
     def __init__(self):
         super().__init__("APT")
@@ -86,17 +93,42 @@ class TradingBot:
         for symbol, price in prices.items():
             self.assets[symbol].update_price(price)
 
-    def execute_trades(self, trades: Dict[str, int]) -> None:
+    def execute_trades(self, trades: Dict[str, int]) -> bool:
         """Update positions after trades."""
+
+        if len(self.open_orders) + 1 > self.MAX_OPEN_ORDERS:
+            print(f"[RISK] Blocked: MAX_OPEN_ORDERS ({self.MAX_OPEN_ORDERS}) reached")
+            return False
+        
+        new_volume = 0
+        for symbol, qty in trades.items():
+            if abs(qty) > self.MAX_ORDER_SIZE:
+                print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
+                return False
+
+            if abs(self.assets[symbol].position + qty) > self.MAX_ABSOLUTE_POSITION:
+                print(f"[RISK] Blocked: Position for {symbol} would exceed MAX_ABSOLUTE_POSITION ({self.MAX_ABSOLUTE_POSITION})")
+                return False
+            
+            new_volume += abs(qty)
+        
+        current_volume = sum(abs(o[1]) for o in self.open_orders)
+        if current_volume + new_volume > self.MAX_OUTSTANDING_VOLUME:
+            print(f"[RISK] Blocked: MAX_OUTSTANDING_VOLUME ({self.MAX_OUTSTANDING_VOLUME}) exceeded")
+            return False
+    
         for symbol, amt in trades.items():
             self.assets[symbol].position += amt
         print(f"[EXECUTED] Trades: {trades}")
+        return True
 
     def run_arbitrage(self) -> None:
         """Check and execute AKAV arbitrage."""
         trades = self.assets["AKAV"].check_arbitrage(self.assets)
         if trades:
-            self.execute_trades(trades)
+            valid = self.execute_trades(trades)
+            if not valid:
+                print("[INFO] Arbitrage opportunity skipped due to risk limits")
 
     def run(self, prices: Dict[str, float]) -> None:
         """Main loop."""
