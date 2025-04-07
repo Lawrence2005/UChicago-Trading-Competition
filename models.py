@@ -1,6 +1,9 @@
 from typing import Dict, Optional
 import numpy as np
 import abc
+import xchange_client
+import asyncio
+import argparse
 
 # class Asset:
 #     """Base class for all assets (stocks/ETFs)."""
@@ -190,12 +193,6 @@ class MyXchangeClient(xchange_client.XChangeClient):
         else:
             ### Not sure what you would do with unstructured data.... ###
             pass
-        
-    async def main():
-        SERVER = 'SERVER URL'
-        my_client = MyXchangeClient(SERVER,"USERNAME","PASSWORD")
-        await my_client.start()
-        return
 
     async def view_books(self):
         while True:
@@ -269,13 +266,19 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Print the current positions held after the sequence of trades
         print("my positions:", self.positions)
 
-    for security, book in self.order_books.items():
-        sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
-        sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
-        print(f"Bids for {security}:\n{sorted_bids}")
-        print(f"Asks for {security}:\n{sorted_asks}")
+    # for security, book in self.order_books.items():
+    #     sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
+    #     sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
+    #     print(f"Bids for {security}:\n{sorted_bids}")
+    #     print(f"Asks for {security}:\n{sorted_asks}")
 
-    print("My positions:", self.positions)
+    # print("My positions:", self.positions)
+
+async def main():
+    SERVER = 'SERVER URL'
+    my_client = MyXchangeClient(SERVER,"USERNAME","PASSWORD")
+    await my_client.start()
+    return
 
 if __name__ == "__main__":
     """....."""
