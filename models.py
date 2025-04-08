@@ -2,8 +2,8 @@ from typing import Dict, Optional
 import numpy as np
 import abc
 import xchange_client
+import parsearg
 import asyncio
-import argparse
 
 # class Asset:
 #     """Base class for all assets (stocks/ETFs)."""
