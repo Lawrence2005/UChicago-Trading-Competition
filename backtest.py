@@ -8,10 +8,6 @@ import os
 
 data = pd.read_csv('Case2.csv', index_col = 0)
 
-'''
-We recommend that you change your train and test split
-'''
-
 TRAIN, TEST = train_test_split(data, test_size = 0.2, shuffle = False)
 
 
