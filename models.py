@@ -1,9 +1,12 @@
 from typing import Dict, Optional
 import numpy as np
 import abc
-import xchange_client
+from utcxchangelib import xchange_client
+#import xchange_client
 import argparse
 import asyncio
+
+import utcxchangelib.xchange_client
 
 # class Asset:
 #     """Base class for all assets (stocks/ETFs)."""
@@ -267,10 +270,10 @@ class MyXchangeClient(xchange_client.XChangeClient):
 async def main():
     SERVER = '3.138.154.148:3333'
     my_client = MyXchangeClient(SERVER,"chicago7","^DmqJY6UUp")
-    await my_client.start()
+    await my_client.start(None)
     return
 
 if __name__ == "__main__":
     """....."""
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(main(False))
+    result = loop.run_until_complete(main())
