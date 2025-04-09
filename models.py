@@ -275,12 +275,12 @@ class MyXchangeClient(xchange_client.XChangeClient):
     # print("My positions:", self.positions)
 
 async def main():
-    SERVER = 'SERVER URL'
-    my_client = MyXchangeClient(SERVER,"USERNAME","PASSWORD")
+    SERVER = '3.138.154.148:3333'
+    my_client = MyXchangeClient(SERVER,"chicago7","PASSWORD")
     await my_client.start()
     return
 
 if __name__ == "__main__":
     """....."""
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(main(user_interface))
+    result = loop.run_until_complete(main(False))
