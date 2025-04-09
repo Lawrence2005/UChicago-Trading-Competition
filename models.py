@@ -2,11 +2,8 @@ from typing import Dict, Optional
 import numpy as np
 import abc
 from utcxchangelib import xchange_client
-#import xchange_client
 import argparse
 import asyncio
-
-import utcxchangelib.xchange_client
 
 class Asset:
     """Base class for all assets (stocks/ETFs)."""
