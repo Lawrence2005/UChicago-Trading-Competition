@@ -2,7 +2,7 @@ from typing import Dict, Optional
 import numpy as np
 import abc
 import xchange_client
-import parsearg
+import argparse
 import asyncio
 
 # class Asset:
@@ -144,16 +144,6 @@ class MyXchangeClient(xchange_client.XChangeClient):
 
     def __init__(self, host: str, username: str, password: str):
         super().__init__(host, username, password)
-
-    async def start(self, user_interface):
-        asyncio.create_task(self.trade())
-
-        # This is where Phoenixhood will be launched if desired. There is no need to change these lines, you can either remove the if or delete the whole thing depending on your purposes.
-        if user_interface:
-            self.launch_user_interface()
-            asyncio.create_task(self.handle_queued_messages())
-
-        await self.connect()
     
     async def bot_handle_cancel_response(self, order_id: str, success: bool, error: Optional[str]) -> None:
         order = self.open_orders[order_id]
@@ -276,7 +266,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
 
 async def main():
     SERVER = '3.138.154.148:3333'
-    my_client = MyXchangeClient(SERVER,"chicago7","PASSWORD")
+    my_client = MyXchangeClient(SERVER,"chicago7","^DmqJY6UUp")
     await my_client.start()
     return
 
