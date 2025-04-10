@@ -59,23 +59,23 @@ class Allocator():
         self.BIANN_FACTOR_MEAN = 12
         self.FACTOR_VOLATILITY = np.sqrt(self.BIANN_FACTOR_MEAN)
         
-    def calculate_rolling_returns(self, prices, window):
+    def calculate_rolling_er(self, prices, window):
         '''
         Calculate compounded rolling returns over specified window
         '''
         returns = prices.pct_change()
         rolling_rets = (1 + returns).rolling(window).apply(np.prod, raw=True) - 1
-        return rolling_rets.dropna()
+        excess_returns = rolling_rets.sub(rolling_rets.mean(axis=1), axis=0).dropna()
+        excess_returns.to_csv('excess_returns.csv')
+        return excess_returns
     
     def tangency_portfolio(self, mean_returns, cov_matrix):
         '''
         Compute tangency portfolio weights
         '''
-        inv_cov = np.linalg.pinv(cov_matrix)  # Use pseudo-inverse for stability
-        ones = np.ones(mean_returns.shape)
-        weights = inv_cov @ mean_returns
-        weights /= (ones @ inv_cov @ mean_returns)  # Normalize to sum to 1
-        return weights
+        inverted_cov = np.linalg.pinv(cov_matrix) if np.isclose(np.linalg.det(cov_matrix), 0) else np.linalg.inv(cov_matrix)
+        one_vector = np.ones(mean_returns.shape)
+        return (inverted_cov @ mean_returns) / (one_vector @ inverted_cov @ mean_returns)
     
     def allocate_portfolio(self, asset_prices):
         '''
@@ -90,32 +90,32 @@ class Allocator():
             return self.current_weights
         
         # Calculate rolling returns
-        rolling_rets = self.calculate_rolling_returns(
+        rolling_er = self.calculate_rolling_er(
             self.running_price_paths, 
             min(self.lookback_window, len(self.running_price_paths)))
         
-        if len(rolling_rets) < 10:  # Insufficient data
-            return np.array([1/6]*6)  # Equal weights
-        
-        # Calculate excess returns
-        excess_rets = rolling_rets.sub(rolling_rets.mean(axis=1), axis=0)
-        
-        # Compute covariance matrix with shrinkage
-        cov_matrix = excess_rets.cov()
-        
         # Get tangency portfolio weights
-        try:
-            weights = self.tangency_portfolio(excess_rets.mean(), cov_matrix)
+        allocation = self.tangency_portf(rolling_er.mean(), rolling_er.cov())
+        allocation *= (0.0075 / (rolling_er.mean() @ allocation))
+        # allocation_rets = pd.DataFrame(rlling_er @ allocation)
+        # allocation_stats = {
+        #     "Mean": allocation_rets.mean(),
+        #     "Vol": allocation_rets.std()
+        # }
+        # allocation_stats["Sharpe Ratio"] = allocation_stats["Mean"] / allocation_stats["Vol"]
+        # allocation_stats = pd.DataFrame(allocation_stats)
+        # try:
+        #     weights = self.tangency_portfolio(excess_rets.mean(), cov_matrix)
             
-            # Rescale to fit -1 to 1 constraint
-            max_leverage = 1.0 / np.abs(weights).max()
-            weights = weights * max_leverage
+        #     # Rescale to fit -1 to 1 constraint
+        #     max_leverage = 1.0 / np.abs(weights).max()
+        #     weights = weights * max_leverage
             
-            self.current_weights = weights
-        except:
-            weights = np.array([1/6]*6)  # Fallback to equal weights
+        #     self.current_weights = weights
+        # except:
+        #     weights = np.array([1/6]*6)  # Fallback to equal weights
         
-        return weights
+        return allocation
 
 
 def grading(train_data, test_data): 
