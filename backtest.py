@@ -146,6 +146,7 @@ class Allocator():
 
         max_leverage = 1.0 / np.abs(allocation).max()
         allocation = allocation * max_leverage
+        self.current_weights = allocation
 
         return allocation
         
