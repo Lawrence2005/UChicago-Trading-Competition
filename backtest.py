@@ -44,6 +44,31 @@ import os
 data = pd.read_csv('Case2.csv')
 TRAIN, TEST = train_test_split(data, test_size = 0.2, shuffle = False)
 
+class Test_Allocator():
+    def __init__(self, train_data):
+        '''
+        Store price history and initialize parameters
+        '''
+        self.running_price_paths = train_data.copy()
+        self.train_data = train_data.copy()
+        self.lookback_window = 900  # Number of ticks for rolling returns
+        self.rebalance_freq = 150    # Rebalance every N ticks
+        self.tick_counter = 0
+        
+        # Initialize weights to equal weights
+        self.current_weights = np.array([1/6] * 6)
+        
+        # Parameters for mean-variance optimization
+        self.BIANN_FACTOR_MEAN = 12
+        self.FACTOR_VOLATILITY = np.sqrt(self.BIANN_FACTOR_MEAN)
+    
+    def allocate_portfolio(self, asset_prices):
+        '''
+        Main allocation function called daily
+        '''
+        allocation = np.array([0,0,0,1/3,1/3,1/3])
+        return allocation
+
 class Allocator():
     def __init__(self, train_data):
         '''
@@ -51,13 +76,17 @@ class Allocator():
         '''
         self.running_price_paths = train_data.copy()
         self.train_data = train_data.copy()
-        self.lookback_window = 30000  # Number of ticks for rolling returns
-        self.rebalance_freq = 1000    # Rebalance every N ticks
+        self.lookback_window = 900  # Number of ticks for rolling returns
+        self.rebalance_freq = 150    # Rebalance every N ticks
         self.tick_counter = 0
+        
+        # Initialize weights to equal weights
+        self.current_weights = np.array([1/6] * 6)
         
         # Parameters for mean-variance optimization
         self.BIANN_FACTOR_MEAN = 12
         self.FACTOR_VOLATILITY = np.sqrt(self.BIANN_FACTOR_MEAN)
+
         
     def calculate_rolling_er(self, prices, window):
         '''
@@ -92,10 +121,10 @@ class Allocator():
         # Calculate rolling returns
         rolling_er = self.calculate_rolling_er(
             self.running_price_paths, 
-            min(self.lookback_window, len(self.running_price_paths)))
+            self.lookback_window)
         
         # Get tangency portfolio weights
-        allocation = self.tangency_portf(rolling_er.mean(), rolling_er.cov())
+        allocation = self.tangency_portfolio(rolling_er.mean(), rolling_er.cov())
         allocation *= (0.0075 / (rolling_er.mean() @ allocation))
         # allocation_rets = pd.DataFrame(rlling_er @ allocation)
         # allocation_stats = {
@@ -114,9 +143,12 @@ class Allocator():
         #     self.current_weights = weights
         # except:
         #     weights = np.array([1/6]*6)  # Fallback to equal weights
-        
-        return allocation
 
+        max_leverage = 1.0 / np.abs(allocation).max()
+        allocation = allocation * max_leverage
+
+        return allocation
+        
 
 def grading(train_data, test_data): 
     '''
