@@ -5,12 +5,14 @@ import matplotlib.pyplot as plt
 
 data = pd.read_csv('Case2.csv')
 returns = data.pct_change()
+returns =(1 + returns).rolling(30000).apply(np.prod, raw=True) - 1
 
 # excess over portfolio average
 excess_returns = returns.sub(returns.mean(axis=1), axis=0).dropna()
 excess_returns.to_csv('excess_returns.csv')
+er = pd.DataFrame(excess_returns)
 
-BIANN_FACTOR_MEAN = 6
+BIANN_FACTOR_MEAN = 12
 FACTOR_VOLATILITY = np.sqrt(BIANN_FACTOR_MEAN)
 FACTOR_SHARPE = np.sqrt(BIANN_FACTOR_MEAN)
 
