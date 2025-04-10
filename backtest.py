@@ -41,7 +41,7 @@ from sklearn.model_selection import train_test_split
 import os
 # from sklearn.covariance import LedoitWolf
 
-data = pd.read_csv('Case2.csv', index_col = 0)
+data = pd.read_csv('Case2.csv')
 TRAIN, TEST = train_test_split(data, test_size = 0.2, shuffle = False)
 
 class Allocator():
