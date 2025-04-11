@@ -144,6 +144,14 @@ class MyXchangeClient(xchange_client.XChangeClient):
 
     def __init__(self, host: str, username: str, password: str):
         super().__init__(host, username, password)
+        self.pe_ratio = 10 
+        self.signature_count = 0
+        self.DLR_std_dev = .006
+        self.apt_theo: int
+        self.dlr_theo: int
+        self.mkj_theo: int
+        self.akav_theo: int
+        self.akim_theo: int
     
     async def bot_handle_cancel_response(self, order_id: str, success: bool, error: Optional[str]) -> None:
         order = self.open_orders[order_id]
@@ -169,20 +177,25 @@ class MyXchangeClient(xchange_client.XChangeClient):
         timestamp = news_release["timestamp"] # This is in exchange ticks not ISO or Epoch
         news_type = news_release['kind']
         news_data = news_release["new_data"]
-
+        print(news_release)
         if news_type == "structured":
             subtype = news_data["structured_subtype"]
             symb = news_data["asset"]
             if subtype == "earnings":
                 earnings = news_data["value"]
-                ### Do something with this data ###
+                self.apt_theo = self.pe_ratio * earnings
+
+                # GONNA NEED TO UNFUCK THIS, INIT FAIR PRICES FOR EACH SECURITY AND UPDATE W/EACH FN, TRADE IN ONLY ONE FN AND 
+                #await self.place_order(symb, 5, xchange_client.Side.BUY, new_price - 50) # 50 is arbitrary constant, make dynamic later
+                #await self.place_order(symb,5,xchange_client.Side.SELL, new_price + 50)
+                
             else:
                 new_signatures = news_data["new_signatures"]
                 cumulative = news_data["cumulative"]
                 ### Do something with this data ###
         else:
-            ### Not sure what you would do with unstructured data.... ###
-            pass
+            for i in self.open_orders.keys():
+                self.bot_handle_cancel_response()
 
     async def view_books(self):
         while True:
@@ -256,13 +269,19 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Print the current positions held after the sequence of trades
         print("my positions:", self.positions)
 
-    # for security, book in self.order_books.items():
-    #     sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
-    #     sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
-    #     print(f"Bids for {security}:\n{sorted_bids}")
-    #     print(f"Asks for {security}:\n{sorted_asks}")
+        for security, book in self.order_books.items():
+            sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
+            sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
+            print(f"Bids for {security}:\n{sorted_bids}")
+            print(f"Asks for {security}:\n{sorted_asks}")
+            best_bid = sorted_bids[0][0]
+            best_ask = sorted_asks[0][0]
+            best_bid_vol = sorted_bids[0][1]
+            best_ask_vol = sorted_asks[0][1]
 
-    # print("My positions:", self.positions)
+            mkt_implied_price = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol+best_ask_vol)
+
+
 
 async def main():
     SERVER = '3.138.154.148:3333'
