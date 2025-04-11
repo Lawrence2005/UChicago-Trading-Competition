@@ -8,6 +8,9 @@ from concurrent.futures import ProcessPoolExecutor
 from sklearn.model_selection import train_test_split
 
 
+import numpy as np
+import pandas as pd
+
 class MV_Alloc():
     def __init__(self, train_data, rebalance_freq, window):
         '''
@@ -66,32 +69,20 @@ class MV_Alloc():
             return self.current_weights
 
         # Expected returns & covariance
-        
-        # Expected returns & covariance
-        momentum = np.mean(returns[-60:], axis=0)
-        vol = np.std(returns[-60:], axis=0)
-        mu = 0.5 * np.mean(returns, axis=0) + 0.5 * (momentum / (vol + 1e-6))  # Improved signal
+        mu = np.mean(returns, axis=0)
         cov = np.cov(returns.T)
 
         # Tangency portfolio
         try:
             allocation = self.tangency_portfolio(mu, cov)
 
-            # Target return scaling
+            # Target return scaling (optional)
             expected_return = mu @ allocation
-            allocation *= 0.2 / (expected_return + 1e-6)
+            allocation *= 0.0075 / expected_return
 
-            # Leverage constraint
+            # Constraint to max leverage of 1
             max_leverage = 1.0 / np.max(np.abs(allocation))
             allocation *= max_leverage
-
-            # Clip and regularize
-            allocation = np.clip(allocation, -0.5, 0.5)
-            allocation = 0.9 * allocation + 0.1 * (np.ones_like(allocation) / 6)
-
-            # Stabilize
-            blend_ratio = 0.1
-            allocation = (1 - blend_ratio) * self.current_weights + blend_ratio * allocation
 
             self.current_weights = allocation
         except Exception as e:
@@ -99,6 +90,7 @@ class MV_Alloc():
             self.current_weights = np.ones(6) / 6
 
         return self.current_weights
+
 
         
 
@@ -110,12 +102,14 @@ def grading_1(train_data, test_data, rebalance_freq, window):
     Grading Script
     '''
     weights = np.full(shape=(len(test_data.index),6), fill_value=0.0)
-    alloc = MV_Alloc(train_data)
+    alloc = MV_Alloc(train_data, rebalance_freq, window)
     for i in range(0,len(test_data)):
         weights[i,:] = alloc.allocate_portfolio(test_data.iloc[i,:])
         if np.sum(weights < -1) or np.sum(weights > 1):
             raise Exception("Weights Outside of Bounds")
     
+    print("finished")
+
     capital = [1]
     for i in range(len(test_data) - 1):
         shares = capital[-1] * weights[i] / np.array(test_data.iloc[i,:])
@@ -151,7 +145,7 @@ async def run_all_tasks():
     loop = asyncio.get_running_loop()
     with ProcessPoolExecutor() as executor:
         tasks = [
-            loop.run_in_executor(executor, grading_wrapper, rf, w)
+            loop.run_in_executor(executor, grading_1, TRAIN, TEST, rf, w)
             for rf, w in combos
         ]
         for task in asyncio.as_completed(tasks):
@@ -171,11 +165,11 @@ def save_results_to_csv(results):
         for i, val in enumerate(capital):
             capital_data.append({'rebalance_freq': rebalance_freq, 'window': window, 'step': i, 'capital': val})
         for i, weight_vector in enumerate(weights):
-            weights_data.append({'rebalance_freq': rebalance_freq, 'window': window, 'step': i, **{f'asset_{j+1}': w for j, w in enumerate(weight_vector)}})
+            weights_data.append({'rebalance_freq': rebalance_freq, 'window': window, 'step': i, **{f'asset_{j + 1}': w for j, w in enumerate(weight_vector)}})
 
-    pd.DataFrame(sharpe_data).to_csv("Case_2_Results\sharpe_results.csv", index=False)
-    pd.DataFrame(capital_data).to_csv("Case_2_Results\capital_results.csv", index=False)
-    pd.DataFrame(weights_data).to_csv("Case_2_Results\weights_results.csv", index=False)
+    pd.DataFrame(sharpe_data).to_csv("Case_2_Results/sharpe_results.csv", index=False)
+    pd.DataFrame(capital_data).to_csv("Case_2_Results/capital_results.csv", index=False)
+    pd.DataFrame(weights_data).to_csv("Case_2_Results/weights_results.csv", index=False)
 
 # Main function to run everything
 def main():
