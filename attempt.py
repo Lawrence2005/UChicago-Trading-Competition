@@ -37,7 +37,7 @@ class APT(Asset):
         self.earnings = earnings
 
     def check_arbitrage(self, order_book) -> Optional[dict[str, int]]:
-        if not self.earnings or self.price:
+        if not self.earnings or not self.price:
             return None
 
         trades = {}
