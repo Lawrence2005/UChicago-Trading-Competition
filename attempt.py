@@ -255,7 +255,8 @@ class TradingBot:
             print(f"[RISK] Blocked: MAX_OUTSTANDING_VOLUME ({self.MAX_OUTSTANDING_VOLUME}) exceeded")
             return False
     
-        for symbol, amt in trades.items():
+        for symbol in trades:
+            amt = trades[symbol][0]
             self.assets[symbol].position += amt
         print(f"[EXECUTED] Trades: {trades}")
         return True
