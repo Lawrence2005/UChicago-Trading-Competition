@@ -152,6 +152,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         self.mkj_theo: int
         self.akav_theo: int
         self.akim_theo: int
+        self.std_spread: int
     
     async def bot_handle_cancel_response(self, order_id: str, success: bool, error: Optional[str]) -> None:
         order = self.open_orders[order_id]
@@ -161,13 +162,30 @@ class MyXchangeClient(xchange_client.XChangeClient):
         print("order fill", self.positions)
 
     async def bot_handle_order_rejected(self, order_id: str, reason: str) -> None:
+
         print("order rejected because of ", reason)
 
     async def bot_handle_trade_msg(self, symbol: str, price: int, qty: int):
         pass
 
     async def bot_handle_book_update(self, symbol: str) -> None:
-        pass
+        for security, book in self.order_books.items():
+            sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
+            sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
+            print(f"Bids for {security}:\n{sorted_bids}")
+            print(f"Asks for {security}:\n{sorted_asks}")
+            if len(sorted_bids) != 0:
+                best_bid = sorted_bids[0][0]
+                best_bid_vol = sorted_bids[0][1]
+            if len(sorted_asks) != 0:
+                best_ask = sorted_asks[0][0]
+                best_ask_vol = sorted_asks[0][1]
+
+            #mkt_implied_price = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol+best_ask_vol)
+
+            self.place_order(security,1,xchange_client.Side.BUY,best_ask)
+
+
 
     async def bot_handle_swap_response(self, swap: str, qty: int, success: bool):
         pass
@@ -195,7 +213,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 ### Do something with this data ###
         else:
             for i in self.open_orders.keys():
-                self.bot_handle_cancel_response()
+                self.cancel_order(i)
 
     async def view_books(self):
         while True:
@@ -205,6 +223,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
                 print(f"Bids for {security}:\n{sorted_bids}")
                 print(f"Asks for {security}:\n{sorted_asks}")
+            
 
     async def start(self, user_interface):
         asyncio.create_task(self.trade())
@@ -269,17 +288,9 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Print the current positions held after the sequence of trades
         print("my positions:", self.positions)
 
-        for security, book in self.order_books.items():
-            sorted_bids = sorted((k,v) for k,v in book.bids.items() if v != 0)
-            sorted_asks = sorted((k,v) for k,v in book.asks.items() if v != 0)
-            print(f"Bids for {security}:\n{sorted_bids}")
-            print(f"Asks for {security}:\n{sorted_asks}")
-            best_bid = sorted_bids[0][0]
-            best_ask = sorted_asks[0][0]
-            best_bid_vol = sorted_bids[0][1]
-            best_ask_vol = sorted_asks[0][1]
+        
 
-            mkt_implied_price = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol+best_ask_vol)
+
 
 
 
