@@ -260,7 +260,8 @@ class TradingBot:
 
     def run_arbitrage(self, symbol: str) -> Optional[Dict[str, int]]:
         """Check and execute AKAV arbitrage."""
-        trades = self.assets[symbol].check_arbitrage(self.assets)
+        trades = self.assets[symbol].check_arbitrage(self.open_orders) if symbol == "APT" or symbol == "MKJ" else self.assets[symbol].check_arbitrage()
+
         if trades:
             valid = self.execute_trades(trades)
             if not valid:
