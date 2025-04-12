@@ -227,6 +227,8 @@ class TradingBot:
         }
         self.open_orders = []
         self.xclient = xchange_client
+        if xchange_client:
+            self.sync_positions(xchange_client.positions)
 
     def update_market_data(self, prices: Dict[str, float]) -> None:
         """Update all asset prices."""
@@ -257,11 +259,14 @@ class TradingBot:
             print(f"[RISK] Blocked: MAX_OUTSTANDING_VOLUME ({self.MAX_OUTSTANDING_VOLUME}) exceeded")
             return False
     
-        for symbol in trades:
-            amt = trades[symbol][0]
-            self.assets[symbol].position += amt
+        self.sync_positions()
         print(f"[EXECUTED] Trades: {trades}")
         return True
+
+    def sync_positions(self) -> None:
+        for symbol, position in self.xclient.positions.items():
+            if symbol in self.assets:
+                self.assets[symbol].position = position
 
     def run_arbitrage(self, symbol: str) -> Optional[Dict[str, int]]:
         """Check and execute AKAV arbitrage."""
@@ -284,7 +289,7 @@ class TradingBot:
         """Main loop."""
         self.update_market_data(prices)
         trades = self.run_arbitrage(symbol)
-        print(f"Positions: {[f'{a.symbol}: {a.position}' for a in self.assets.values()]}")
+        print(f"POSITIONS: {[f'{a.symbol}: {a.position}' for a in self.assets.values()]}")
         return trades
 
 class MyXchangeClient(xchange_client.XChangeClient):
@@ -342,7 +347,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         pass 
 
     async def bot_handle_news(self, news_release: dict):
-        print(news_release)
+        print("NEWS: ", news_release)
         news_data = news_release["new_data"]
         if news_release["kind"] == "structured":
             if news_data["asset"] == "DLR":
@@ -381,14 +386,13 @@ class MyXchangeClient(xchange_client.XChangeClient):
     async def _enhanced_trade(self):
         """Enhanced trading logic that incorporates TradingBot while maintaining original behavior"""
         # Original trading sequence preserved
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         print("attempting to trade")
 
         if self.open_orders:
             await self.cancel_order(list(self.open_orders.keys())[0])
 
-        await asyncio.sleep(5)
-        print("my positions:", self.positions)
+        print("SYSTEM POSITIONS: ", self.positions)
 
         # New TradingBot integration
         while True:
