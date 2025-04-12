@@ -216,7 +216,7 @@ class TradingBot:
     assets: dict[str, Asset]
     open_orders: list[tuple[str, int]]
 
-    def __init__(self):
+    def __init__(self, xchange_client=None):
         self.assets = {
             "APT": APT(),
             "DLR": DLR(),
@@ -225,6 +225,7 @@ class TradingBot:
             "AKIM": AKIM()
         }
         self.open_orders = []
+        self.xclient = xchange_client
 
     def update_market_data(self, prices: Dict[str, float]) -> None:
         """Update all asset prices."""
@@ -261,7 +262,12 @@ class TradingBot:
 
     def run_arbitrage(self, symbol: str) -> Optional[Dict[str, int]]:
         """Check and execute AKAV arbitrage."""
-        trades = self.assets[symbol].check_arbitrage(self.open_orders) if symbol == "APT" or symbol == "MKJ" else self.assets[symbol].check_arbitrage()
+        if symbol == "APT":
+            trades = self.assets[symbol].check_arbitrage(self.xclient.order_books["APT"]) 
+        elif symbol == "MKJ":
+            trades = self.assets[symbol].check_arbitrage(self.xclient.order_books["MKJ"])
+        else:
+            trades = self.assets[symbol].check_arbitrage()
 
         if trades:
             valid = self.execute_trades(trades)
@@ -282,7 +288,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
     def __init__(self, server: str, username: str, password: str):
         super().__init__(server, username, password)
         # Initialize TradingBot without modifying existing attributes
-        self._trading_bot = TradingBot()
+        self._trading_bot = TradingBot(self)
         self._last_prices = {}
         self._mkt_implied_prices ={}
     
