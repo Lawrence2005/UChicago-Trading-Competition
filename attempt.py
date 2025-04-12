@@ -339,7 +339,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                         await self.cancel_order(order_id)
                         print(f"[CANCELLED] APT Order ID: {order_id}")
 
-                self._trading_bot.assets["APT"].update_earnings(news_data["earnings"])
+                self._trading_bot.assets["APT"].update_earnings(news_data["value"])
                 trades = self._trading_bot.assets["APT"].check_arbitrage(self.order_books["APT"])
 
                 if trades:
