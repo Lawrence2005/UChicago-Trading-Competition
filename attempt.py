@@ -304,7 +304,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         if order_id in self.open_orders:
             side = self.open_orders[order_id][0].side
             signed_qty = qty if side == xchange_client.Side.BUY else -qty
-            self._trading_bot.execute_trades({self.open_orders[order_id][0].symbol: (signed_qty, 0)})
+            self._trading_bot.execute_trades({self.open_orders[order_id][0].symbol: (signed_qty, price)})
         print("order fill", self.positions)
 
     async def bot_handle_order_rejected(self, order_id: str, reason: str) -> None:
