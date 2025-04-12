@@ -44,11 +44,11 @@ class APT(Asset):
 
         best_bid = max(order_book["bids"].keys()) if order_book["bids"] else None
         if best_bid and best_bid > self.price:
-            trades[self.symbol] = (-1, self.price + self.SPREAD)
+            trades[self.symbol] = (-1, int(self.price + self.SPREAD))
 
         best_ask = min(order_book["asks"].keys()) if order_book["asks"] else None
         if best_ask and best_ask < self.price:
-            trades[self.symbol] = (1, self.price - self.SPREAD) 
+            trades[self.symbol] = (1, int(self.price - self.SPREAD)) 
         
         return trades if trades else None
 
@@ -123,9 +123,9 @@ class DLR(Asset):
         fair = self.compute_fair_value()
         bid, ask = self.get_market_making_quotes(fair)
         if self.price > fair:
-            return {self.symbol: (-1, bid)}
+            return {self.symbol: (-1, int(bid))}
         if self.price < fair:
-            return {self.symbol: (1, ask)}
+            return {self.symbol: (1, int(ask))}
         return None
 
 class MKJ(Asset):
@@ -162,12 +162,12 @@ class MKJ(Asset):
         if order_book["bids"]:
             best_bid = max(order_book["bids"].keys())
             if best_bid > fair_price:
-                trades[self.symbol] = (-1, bid)
+                trades[self.symbol] = (-1, int(bid))
 
         if order_book["asks"]:
             best_ask = min(order_book["asks"].keys())
             if best_ask < fair_price:
-                trades[self.symbol] = (1, ask)
+                trades[self.symbol] = (1, int(ask))
 
         return trades if trades else None
 
