@@ -152,7 +152,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         self.mkj_theo: int
         self.akav_theo: int
         self.akim_theo: int
-        self.std_spread: int
+        self.std_spread: int = 500
     
     async def bot_handle_cancel_response(self, order_id: str, success: bool, error: Optional[str]) -> None:
         order = self.open_orders[order_id]
@@ -181,9 +181,9 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 best_ask = sorted_asks[0][0]
                 best_ask_vol = sorted_asks[0][1]
 
-            #mkt_implied_price = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol+best_ask_vol)
+            mkt_implied_price = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol+best_ask_vol)
 
-            self.place_order(security,1,xchange_client.Side.BUY,best_ask)
+            #self.place_order(security,1,xchange_client.Side.BUY,best_ask)
 
 
 
