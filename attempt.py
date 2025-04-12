@@ -96,7 +96,7 @@ class DLR(Asset):
                 mu = np.log(self.alpha) + np.log(count)
                 count = np.random.lognormal(mean=mu, sigma=self.sigma)
             final_counts.append(count)
-        print("FINAL COUNTS: ", final_counts)
+        print("FINAL COUNTS: ", len(final_counts))
         # Probability of reaching 100,000 signatures
         success_prob = np.mean(np.array(final_counts) >= 100000)
 
