@@ -36,7 +36,7 @@ class APT(Asset):
     def update_earnings(self, earnings):
         self.earnings = earnings
 
-    def check_arbitrage(self, order_book) -> Optional[dict[str, int]]:
+    def check_arbitrage(self, order_book) -> Optional[dict[str, tuple[int, int]]]:
         if not self.earnings or not self.price:
             return None
 
@@ -119,7 +119,7 @@ class DLR(Asset):
 
         return bid, ask
 
-    def check_arbitrage(self) -> Optional[dict[str, int]]:
+    def check_arbitrage(self) -> Optional[dict[str, tuple[int, int]]]:
         fair = self.compute_fair_value()
         bid, ask = self.get_market_making_quotes(fair)
         if self.price > fair:
@@ -150,7 +150,7 @@ class MKJ(Asset):
         ask = fair_price + self.SPREAD_MULTIPLIER/2
         return bid, ask
 
-    def check_arbitrage(self, order_book):
+    def check_arbitrage(self, order_book) -> Optional[dict[str, tuple[int, int]]]:
         if not hasattr(self, '_mkt_implied_prices') or self.price is None:
             return None
 
@@ -232,7 +232,7 @@ class TradingBot:
         for symbol, price in prices.items():
             self.assets[symbol].update_price(price)
 
-    def execute_trades(self, trades: Dict[str, int]) -> bool:
+    def execute_trades(self, trades: Dict[str, tuple[int, int]]) -> bool:
         if len(self.open_orders) + 1 > self.MAX_OPEN_ORDERS:
             print(f"[RISK] Blocked: MAX_OPEN_ORDERS ({self.MAX_OPEN_ORDERS}) reached")
             return False
