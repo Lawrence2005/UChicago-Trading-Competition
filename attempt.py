@@ -176,15 +176,12 @@ class MyXchangeClient(xchange_client.XChangeClient):
             vol_filter = 0
             best_bid = max(book.bids.keys())
             best_ask = min(book.asks.keys())
-<<<<<<< HEAD
 
             if len([price for price in book.asks.keys() if abs(book.asks[price]) > vol_filter]) > 0 and len([price for price in book.bids.keys() if abs(book.bids[price]) > vol_filter]) > 0:
                 best_ask = min([price for price in book.asks.keys() if abs(book.asks[price]) > vol_filter])
                 best_bid = max([price for price in book.bids.keys() if abs(book.bids[price]) > vol_filter])
 
             best_bid_vol = book.bids[best_bid]
-=======
->>>>>>> acbba1c (did something)
             best_ask_vol = book.asks[best_ask]
 
             self._last_prices[symbol] = (best_bid + best_ask) / 2
