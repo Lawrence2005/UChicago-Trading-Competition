@@ -268,6 +268,8 @@ class TradingBot:
             trades = self.assets[symbol].check_arbitrage(self.xclient.order_books["APT"]) 
         elif symbol == "MKJ":
             trades = self.assets[symbol].check_arbitrage(self.xclient.order_books["MKJ"])
+        elif symbol == "AKAV":
+            trades = self.assets[symbol].check_arbitrage(self.assets)
         else:
             trades = self.assets[symbol].check_arbitrage()
 
