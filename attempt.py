@@ -111,6 +111,7 @@ class DLR(Asset):
             return 100.0 if self.current_signatures >= 100000 else 0.0
         
         prob = self.simulate_signature_paths(ticks_left)
+        print("DLR THEO: ", prob)
         return 100 * prob
     
     def get_market_making_quotes(self, fair_value, spread=100.0):
