@@ -353,7 +353,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
 
                 if trades:
                     for symbol in trades:
-                        qty = trades[symbol][0]
+                        qty = trades[symbol]
                         side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
                         await self.place_order(symbol, abs(qty), side, trades[symbol][1])
 
