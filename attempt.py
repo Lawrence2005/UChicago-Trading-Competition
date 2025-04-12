@@ -83,6 +83,7 @@ class DLR(Asset):
         self.current_signatures += new_signatures
         self.history.append(self.current_signatures)
         self.time_step += 1
+        print("TIMESTEP: ", self.time_step)
 
     def simulate_signature_paths(self, num_ticks_left: int, num_simulations: int = 1000) -> float:
         """
@@ -359,7 +360,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                         print(f"[CANCELLED] APT Order ID: {order_id}")
 
                 self._trading_bot.assets["APT"].update_earnings(news_data["value"])
-                trades = self._trading_bot.assets["APT"].check_arbitrage(self.order_books["APT"])
+                trades = self._trading_bot.run_arbitrage("APT")
 
                 if trades:
                     for symbol in trades:
