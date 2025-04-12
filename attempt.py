@@ -239,6 +239,7 @@ class TradingBot:
         
         new_volume = 0
         for symbol in trades:
+            print(trades)
             qty = trades[symbol][0]
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
@@ -303,7 +304,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         if order_id in self.open_orders:
             side = self.open_orders[order_id][0].side
             signed_qty = qty if side == xchange_client.Side.BUY else -qty
-            self._trading_bot.execute_trades({self.open_orders[order_id][0].symbol: signed_qty})
+            self._trading_bot.execute_trades({self.open_orders[order_id][0].symbol: (signed_qty, 0)})
         print("order fill", self.positions)
 
     async def bot_handle_order_rejected(self, order_id: str, reason: str) -> None:
