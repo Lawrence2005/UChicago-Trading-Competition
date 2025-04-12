@@ -22,11 +22,13 @@ class Asset:
 class APT(Asset):
     PE_RATIO: float = 10.0
     earnings: float
+    SPREAD: float
 
     """Large-cap stock with earnings announcements."""
     def __init__(self):
         super().__init__("APT")
         self.earnings = None
+        self.SPREAD = 50
     
     def calculate_fair_price(self, earning):
         self.price = self.PE_RATIO * earning
@@ -42,11 +44,11 @@ class APT(Asset):
 
         best_bid = max(order_book["bids"].keys()) if order_book["bids"] else None
         if best_bid and best_bid > self.price:
-            trades[self.symbol] = -1
+            trades[self.symbol] = (-1, self.price + self.SPREAD)
 
         best_ask = min(order_book["asks"].keys()) if order_book["asks"] else None
         if best_ask and best_ask < self.price:
-            trades[self.symbol] = 1 
+            trades[self.symbol] = (1, self.price - self.SPREAD) 
         
         return trades if trades else None
 
@@ -82,7 +84,7 @@ class DLR(Asset):
         self.history.append(self.current_signatures)
         self.time_step += 1
 
-    def simulate_signature_paths(self, num_days_left: int, num_simulations: int = 1000) -> float:
+    def simulate_signature_paths(self, num_ticks_left: int, num_simulations: int = 1000) -> float:
         """
         Monte Carlo simulation of signature growth to estimate probability of hitting 100,000.
         """
@@ -90,7 +92,7 @@ class DLR(Asset):
         
         for _ in range(num_simulations):
             count = self.current_signatures
-            for _ in range(num_days_left * 5):
+            for _ in range(num_ticks_left):
                 mu = np.log(self.alpha) + np.log(count)
                 count = np.random.lognormal(mean=mu, sigma=self.sigma)
             final_counts.append(count)
@@ -111,7 +113,7 @@ class DLR(Asset):
         prob = self.simulate_signature_paths(ticks_left)
         return 100 * prob
     
-    def get_market_making_quotes(self, fair_value, spread=1.0):
+    def get_market_making_quotes(self, fair_value, spread=100.0):
         bid = fair_value - 0.5 * spread
         ask = fair_value + 0.5 * spread
 
@@ -119,16 +121,55 @@ class DLR(Asset):
 
     def check_arbitrage(self) -> Optional[dict[str, int]]:
         fair = self.compute_fair_value()
+        bid, ask = self.get_market_making_quotes(fair)
         if self.price > fair:
-            return {self.symbol: -1}
+            return {self.symbol: (-1, bid)}
         if self.price < fair:
-            return {self.symbol: 1}
+            return {self.symbol: (1, ask)}
         return None
 
 class MKJ(Asset):
+    SPREAD_MULTIPLIER: float
+
     """Small-cap stock with unstructured news."""
     def __init__(self):
         super().__init__("MKJ")
+        self.SPREAD_MULTIPLIER = 1.5
+
+    def get_fair(self, mkt_implied_prices):
+        return mkt_implied_prices[self.symbol]
+    
+    def get_market_making_quotes(self, fair_price: float = None) -> tuple[float, float]:
+        """
+        Generate bid/ask quotes centered around fair price with spread.
+        """
+        if fair_price is None:
+            fair_price = self.get_fair(self._mkt_implied_prices)
+        
+        bid = fair_price - self.SPREAD_MULTIPLIER/2
+        ask = fair_price + self.SPREAD_MULTIPLIER/2
+        return bid, ask
+
+    def check_arbitrage(self, order_book):
+        if not hasattr(self, '_mkt_implied_prices') or self.price is None:
+            return None
+
+        fair_price = self.get_fair(self._mkt_implied_prices)
+        bid, ask = self.get_market_making_quotes(fair_price)
+
+        trades = {}
+
+        if order_book["bids"]:
+            best_bid = max(order_book["bids"].keys())
+            if best_bid > fair_price:
+                trades[self.symbol] = (-1, bid)
+
+        if order_book["asks"]:
+            best_ask = min(order_book["asks"].keys())
+            if best_ask < fair_price:
+                trades[self.symbol] = (1, ask)
+
+        return trades if trades else None
 
 class ETF(Asset):
     FEE: float
@@ -177,9 +218,9 @@ class TradingBot:
 
     def __init__(self):
         self.assets = {
-            "APT": Asset("APT"),
-            "DLR": Asset("DLR"),
-            "MKJ": Asset("MKJ"),
+            "APT": APT("APT"),
+            "DLR": DLR("DLR"),
+            "MKJ": MKJ("MKJ"),
             "AKAV": AKAV(),
             "AKIM": AKIM()
         }
@@ -191,8 +232,6 @@ class TradingBot:
             self.assets[symbol].update_price(price)
 
     def execute_trades(self, trades: Dict[str, int]) -> bool:
-        """Update positions after trades."""
-
         if len(self.open_orders) + 1 > self.MAX_OPEN_ORDERS:
             print(f"[RISK] Blocked: MAX_OPEN_ORDERS ({self.MAX_OPEN_ORDERS}) reached")
             return False
@@ -219,19 +258,21 @@ class TradingBot:
         print(f"[EXECUTED] Trades: {trades}")
         return True
 
-    def run_arbitrage(self) -> None:
+    def run_arbitrage(self, symbol: str) -> Optional[Dict[str, int]]:
         """Check and execute AKAV arbitrage."""
-        trades = self.assets["AKAV"].check_arbitrage(self.assets)
+        trades = self.assets[symbol].check_arbitrage(self.assets)
         if trades:
             valid = self.execute_trades(trades)
             if not valid:
                 print("[INFO] Arbitrage opportunity skipped due to risk limits")
+        return trades
 
-    def run(self, prices: Dict[str, float]) -> None:
+    def run(self, prices: Dict[str, float], symbol: str) -> Optional[Dict[str, int]]:
         """Main loop."""
         self.update_market_data(prices)
-        self.run_arbitrage()
+        trades = self.run_arbitrage(symbol)
         print(f"Positions: {[f'{a.symbol}: {a.position}' for a in self.assets.values()]}")
+        return trades
 
 class MyXchangeClient(xchange_client.XChangeClient):
     '''A shell client with the methods that can be implemented to interact with the xchange.'''
@@ -302,9 +343,10 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 trades = self._trading_bot.assets["APT"].check_arbitrage(self.order_books["APT"])
 
                 if trades:
-                    for symbol, qty in trades.items():
+                    for symbol in trades:
+                        qty = trades[symbol][0]
                         side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
-                        await self.place_order(symbol, abs(qty), side)
+                        await self.place_order(symbol, abs(qty), side, trades[symbol][1])
 
     async def view_books(self):
         while True:
@@ -327,21 +369,10 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Original trading sequence preserved
         await asyncio.sleep(5)
         print("attempting to trade")
-        await self.place_order("APT", 3, xchange_client.Side.BUY, 5)
-        await self.place_order("APT", 3, xchange_client.Side.SELL, 7)
-        await asyncio.sleep(5)
 
         if self.open_orders:
             await self.cancel_order(list(self.open_orders.keys())[0])
 
-        await self.place_swap_order('toAKAV', 1)
-        await asyncio.sleep(5)
-        await self.place_swap_order('fromAKAV', 1)
-        await asyncio.sleep(5)
-        await self.place_order("APT", 1000, xchange_client.Side.SELL, 7)
-        await asyncio.sleep(5)
-        market_order_id = await self.place_order("APT", 10, xchange_client.Side.SELL)
-        print("MARKET ORDER ID:", market_order_id)
         await asyncio.sleep(5)
         print("my positions:", self.positions)
 
@@ -350,23 +381,22 @@ class MyXchangeClient(xchange_client.XChangeClient):
             try:
                 if self._last_prices:
                     # Run trading bot logic
-                    self._trading_bot.run(self._last_prices)
-                    
-                    # Example: Execute arbitrage if available
-                    arb_trades = self._trading_bot.assets["AKAV"].check_arbitrage(
-                        self._trading_bot.assets
-                    )
-                    if arb_trades:
-                        for symbol, qty in arb_trades.items():
-                            side = (xchange_client.Side.BUY if qty > 0 
-                                  else xchange_client.Side.SELL)
-                            await self.place_order(
-                                symbol, 
-                                abs(qty), 
-                                side
-                            )
+                    for asset in self._trading_bot.assets:
+                        arb_trades = self._trading_bot.run(self._last_prices, asset)
+                        
+                        if arb_trades:
+                            for symbol in arb_trades:
+                                qty = arb_trades[symbol][0]
+                                side = (xchange_client.Side.BUY if qty > 0 
+                                    else xchange_client.Side.SELL)
+                                await self.place_order(
+                                    symbol, 
+                                    abs(qty), 
+                                    side,
+                                    arb_trades[symbol][1]
+                                )
                 
-                await asyncio.sleep(1)  # Throttle trading frequency
+                        await asyncio.sleep(1)  # Throttle trading frequency
                 
             except Exception as e:
                 print(f"Error in trading loop: {e}")
@@ -381,7 +411,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
     # print("My positions:", self.positions)
 
 async def main():
-    my_client = MyXchangeClient('3.138.154.148:3333',"chicago7","^DmqJY6UUp")
+    my_client = MyXchangeClient('server.ucicagotradingcompetition25.com:3333',"chicago7","^DmqJY6UUp")
     await my_client.start(None)
     return
 
