@@ -239,8 +239,7 @@ class TradingBot:
         
         new_volume = 0
         for symbol in trades:
-            print(trades[symbol])
-            qty, _ = trades[symbol]
+            qty = trades[symbol]
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
                 return False
@@ -257,7 +256,7 @@ class TradingBot:
             return False
     
         for symbol in trades:
-            amt = trades[symbol][0]
+            amt = trades[symbol]
             self.assets[symbol].position += amt
         print(f"[EXECUTED] Trades: {trades}")
         return True
@@ -396,7 +395,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                         
                         if arb_trades:
                             for symbol in arb_trades:
-                                qty = arb_trades[symbol][0]
+                                qty = arb_trades[symbol]
                                 side = (xchange_client.Side.BUY if qty > 0 
                                     else xchange_client.Side.SELL)
                                 await self.place_order(
