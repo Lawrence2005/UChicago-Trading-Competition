@@ -73,24 +73,31 @@ class DLR(Asset):
         self.sigma = 0.006
         self.time_step = 0  # current update index
         self.history = [self.current_signatures]
-        self.TOTAL_TICKS = 50
+        self.TOTAL_TICKS = 4500
 
-    def update_signatures(self, new_signatures: int):
+    def update_signatures(self, updated_signatures: int):
         """
         Update current signature count based on news release.
         Append to history and increment time step.
         """
-        self.current_signatures += new_signatures
+        self.current_signatures = updated_signatures
         self.history.append(self.current_signatures)
-        self.time_step += 1
-        print("TIMESTEP: ", self.time_step)
 
-    def simulate_signature_paths(self, num_ticks_left: int, num_simulations: int = 1000) -> float:
+    def calculate_ticks_left(self, timestamp: int):
+        period = (timestamp % 450) // 75
+        num_days_left = (10- (timestamp // 45 + 1)) * 5
+        return num_days_left + 5 - period
+
+    def simulate_signature_paths(self, timestamp: int, num_simulations: int = 1000) -> float:
         """
         Monte Carlo simulation of signature growth to estimate probability of hitting 100,000.
         """
+
+        num_ticks_left = self.calculate_ticks_left(timestamp)
+        if num_ticks_left <= 0:  # End of evaluation period
+            return 100.0 if self.current_signatures >= 100000 else 0.0
+
         final_counts = []
-        
         for _ in range(num_simulations):
             count = self.current_signatures
             for _ in range(num_ticks_left):
@@ -101,28 +108,16 @@ class DLR(Asset):
         # Probability of reaching 100,000 signatures
         success_prob = np.mean(np.array(final_counts) >= 100000)
 
-        return success_prob
+        return 100 * success_prob
 
-    def compute_fair_value(self) -> float:
-        """
-        Estimate fair value as expected payout (100 or 0).
-        """
-        ticks_left = self.TOTAL_TICKS - self.time_step
-        if ticks_left <= 0:  # End of evaluation period
-            return 100.0 if self.current_signatures >= 100000 else 0.0
-        
-        prob = self.simulate_signature_paths(ticks_left)
-        print("DLR THEO: ", prob)
-        return 100 * prob
-    
     def get_market_making_quotes(self, fair_value, spread=100.0):
         bid = fair_value - 0.5 * spread
         ask = fair_value + 0.5 * spread
 
         return bid, ask
 
-    def check_arbitrage(self) -> Optional[dict[str, tuple[int, int]]]:
-        fair = self.compute_fair_value()
+    def check_arbitrage(self, timestamp: int) -> Optional[dict[str, tuple[int, int]]]:
+        fair = self.simulate_signature_paths(timestamp)
         bid, ask = self.get_market_making_quotes(fair)
         if self.price > fair:
             return {self.symbol: (-1, int(bid))}
@@ -353,7 +348,8 @@ class MyXchangeClient(xchange_client.XChangeClient):
         if news_release["kind"] == "structured":
             if news_data["asset"] == "DLR":
                 timestamp = news_release["timestamp"]
-                self._trading_bot.assets["DLR"].update_signatures(news_data["new_signatures"])
+                self._trading_bot.assets["DLR"].update_signatures(news_data["cumulative"])
+                trades = self._trading_bot.run_arbitrage("DLR")
                 print("TIMESTAMP: ", timestamp)
             elif news_data["asset"] == "APT":
                 for order_id, order in list(self.open_orders.items()):
