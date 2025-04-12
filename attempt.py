@@ -173,10 +173,15 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Enhanced book handling while maintaining original empty implementation
         book = self.order_books[symbol]
         if book.bids and book.asks:
+            vol_filter = 0
             best_bid = max(book.bids.keys())
-            best_bid_vol = book.bids[best_bid]
-
             best_ask = min(book.asks.keys())
+
+            if len([price for price in book.asks.keys() if abs(book.asks[price]) > vol_filter]) > 0 and len([price for price in book.bids.keys() if abs(book.bids[price]) > vol_filter]) > 0:
+                best_ask = min([price for price in book.asks.keys() if abs(book.asks[price]) >= vol_filter])
+                best_bid = max([price for price in book.bids.keys() if abs(book.bids[price]) >= vol_filter])
+
+            best_bid_vol = book.bids[best_bid]
             best_ask_vol = book.bids[best_ask]
 
             self._last_prices[symbol] = (best_bid + best_ask) / 2
