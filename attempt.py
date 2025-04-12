@@ -4,6 +4,7 @@ import abc
 from utcxchangelib import xchange_client
 # import argparse
 import asyncio
+import traceback
 
 class Asset:
     """Base class for all assets (stocks/ETFs)."""
@@ -194,9 +195,9 @@ class AKAV(ETF):
         """Return trades if arbitrage exists."""
         nav = self.calculate_nav(assets)
         if self.price > nav + self.FEE:
-            return {self.symbol: -1, **{symbol: 1 for symbol in self.components}}
+            return {self.symbol: (-1, None), **{symbol: (1, None) for symbol in self.components}}
         elif self.price < nav - self.FEE:
-            return {self.symbol: 1, **{symbol: -1 for symbol in self.components}}
+            return {self.symbol: (1, None), **{symbol: (-1, None) for symbol in self.components}}
         return None
 
 class AKIM(ETF):
@@ -241,7 +242,6 @@ class TradingBot:
         
         new_volume = 0
         for symbol in trades:
-            print(trades)
             qty = trades[symbol][0]
             if qty is None:
                 pass
@@ -426,6 +426,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 
             except Exception as e:
                 print(f"Error in trading loop: {e}")
+                print(traceback.format_exc())
                 await asyncio.sleep(5)
 
     # for security, book in self.order_books.items():
