@@ -62,6 +62,7 @@ class DLR(Asset):
     sigma: float
     time_step: int
     history: list[int]
+    TOTAL_TICKS: int
 
     def __init__(self):
         super().__init__("DLR")
@@ -70,6 +71,7 @@ class DLR(Asset):
         self.sigma = 0.006
         self.time_step = 0  # current update index
         self.history = [self.current_signatures]
+        self.TOTAL_TICKS = 50
 
     def update_signatures(self, new_signatures: int):
         """
@@ -98,15 +100,15 @@ class DLR(Asset):
 
         return success_prob
 
-    def compute_fair_value(self, current_day: int) -> float:
+    def compute_fair_value(self) -> float:
         """
         Estimate fair value as expected payout (100 or 0).
         """
-        days_left = 10 - current_day
-        if days_left <= 0:
+        ticks_left = self.TOTAL_TICKS - self.time_step
+        if ticks_left <= 0:  # End of evaluation period
             return 100.0 if self.current_signatures >= 100000 else 0.0
-        prob = self.simulate_signature_paths(days_left)
-
+        
+        prob = self.simulate_signature_paths(ticks_left)
         return 100 * prob
     
     def get_market_making_quotes(self, fair_value, spread=1.0):
@@ -116,7 +118,7 @@ class DLR(Asset):
         return bid, ask
 
     def check_arbitrage(self) -> Optional[dict[str, int]]:
-        fair = self.compute_fair_value(self.time_step // 5)
+        fair = self.compute_fair_value()
         if self.price > fair:
             return {self.symbol: -1}
         if self.price < fair:
