@@ -107,7 +107,6 @@ class DLR(Asset):
                 mu = np.log(self.alpha) + np.log(count)
                 count = np.random.lognormal(mean=mu, sigma=self.sigma)
             final_counts.append(count)
-        print("FINAL COUNTS: ", len(final_counts))
         # Probability of reaching 100,000 signatures
         success_prob = np.mean(np.array(final_counts) >= 100000)
 
@@ -122,10 +121,11 @@ class DLR(Asset):
     def check_arbitrage(self) -> Optional[dict[str, tuple[int, int]]]:
         fair = self.simulate_signature_paths()
         bid, ask = self.get_market_making_quotes(fair)
-        if self.price > fair:
-            return {self.symbol: (-1, int(bid))}
-        if self.price < fair:
-            return {self.symbol: (1, int(ask))}
+
+        if bid <= 0 or self.price > fair:
+            return {self.symbol: (-1, None)}
+        if ask >= 100 or self.price < fair:
+            return {self.symbol: (1, None)}
         return None
 
 class MKJ(Asset):
@@ -243,6 +243,9 @@ class TradingBot:
         for symbol in trades:
             print(trades)
             qty = trades[symbol][0]
+            if qty is None:
+                pass
+
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
                 return False
@@ -258,7 +261,6 @@ class TradingBot:
             print(f"[RISK] Blocked: MAX_OUTSTANDING_VOLUME ({self.MAX_OUTSTANDING_VOLUME}) exceeded")
             return False
     
-        self.sync_positions()
         print(f"[EXECUTED] Trades: {trades}")
         return True
 
@@ -366,9 +368,11 @@ class MyXchangeClient(xchange_client.XChangeClient):
 
             if trades:
                 for symbol in trades:
+                    print(trades)
                     qty = trades[symbol][0]
                     side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
                     await self.place_order(symbol, abs(qty), side, trades[symbol][1])
+                    self._trading_bot.sync_positions()
 
     async def view_books(self):
         while True:
@@ -416,6 +420,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
                                     side,
                                     arb_trades[symbol][1]
                                 )
+                                self._trading_bot.sync_positions()
                 
                         await asyncio.sleep(1)  # Throttle trading frequency
                 
