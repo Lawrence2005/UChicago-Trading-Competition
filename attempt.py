@@ -42,11 +42,11 @@ class APT(Asset):
 
         trades = {}
 
-        best_bid = max(order_book["bids"].keys()) if order_book["bids"] else None
+        best_bid = max(order_book.bids.keys()) if order_book.bids else None
         if best_bid and best_bid > self.price:
             trades[self.symbol] = (-1, int(self.price + self.SPREAD))
 
-        best_ask = min(order_book["asks"].keys()) if order_book["asks"] else None
+        best_ask = min(order_book.asks.keys()) if order_book.asks else None
         if best_ask and best_ask < self.price:
             trades[self.symbol] = (1, int(self.price - self.SPREAD)) 
         
@@ -159,13 +159,13 @@ class MKJ(Asset):
 
         trades = {}
 
-        if order_book["bids"]:
-            best_bid = max(order_book["bids"].keys())
+        if order_book.bids:
+            best_bid = max(order_book.bids.keys())
             if best_bid > fair_price:
                 trades[self.symbol] = (-1, int(bid))
 
-        if order_book["asks"]:
-            best_ask = min(order_book["asks"].keys())
+        if order_book.asks:
+            best_ask = min(order_book.asks.keys())
             if best_ask < fair_price:
                 trades[self.symbol] = (1, int(ask))
 
@@ -239,7 +239,8 @@ class TradingBot:
         
         new_volume = 0
         for symbol in trades:
-            qty = trades[symbol]
+            print(trades[symbol])
+            qty, _ = trades[symbol]
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
                 return False
