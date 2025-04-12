@@ -21,10 +21,34 @@ class Asset:
 
 class APT(Asset):
     PE_RATIO: float = 10.0
+    earnings: float
 
     """Large-cap stock with earnings announcements."""
     def __init__(self):
         super().__init__("APT")
+        self.earnings = None
+    
+    def calculate_fair_price(self, earning):
+        self.price = self.PE_RATIO * earning
+
+    def update_earnings(self, earnings):
+        self.earnings = earnings
+
+    def check_arbitrage(self, order_book) -> Optional[dict[str, int]]:
+        if not self.earnings or self.price:
+            return None
+
+        trades = {}
+
+        best_bid = max(order_book["bids"].keys()) if order_book["bids"] else None
+        if best_bid and best_bid > self.price:
+            trades[self.symbol] = -1
+
+        best_ask = min(order_book["asks"].keys()) if order_book["asks"] else None
+        if best_ask and best_ask < self.price:
+            trades[self.symbol] = 1 
+        
+        return trades if trades else None
 
 class DLR(Asset):
     """Mid-cap stock dependent on petition signatures.
@@ -92,7 +116,12 @@ class DLR(Asset):
         return bid, ask
 
     def check_arbitrage(self) -> Optional[dict[str, int]]:
-        ##TODO##
+        fair = self.compute_fair_value(self.time_step // 5)
+        if self.price > fair:
+            return {self.symbol: -1}
+        if self.price < fair:
+            return {self.symbol: 1}
+        return None
 
 class MKJ(Asset):
     """Small-cap stock with unstructured news."""
@@ -254,24 +283,26 @@ class MyXchangeClient(xchange_client.XChangeClient):
             self._trading_bot.update_market_data(self._last_prices)
 
     async def bot_handle_swap_response(self, swap: str, qty: int, success: bool):
-        pass  # Original unchanged
+        pass 
 
     async def bot_handle_news(self, news_release: dict):
-        # Original implementation preserved exactly
-        timestamp = news_release["timestamp"]
-        news_type = news_release['kind']
         news_data = news_release["new_data"]
+        if news_release["kind"] == "structured":
+            if news_data["asset"] == "DLR":
+                self._trading_bot.assets["DLR"].update_signatures(news_data["new_signatures"])
+            elif news_data["asset"] == "APT":
+                for order_id, order in list(self.open_orders.items()):
+                    if order[0].symbol == "APT":
+                        await self.cancel_order(order_id)
+                        print(f"[CANCELLED] APT Order ID: {order_id}")
 
-        if news_type == "structured":
-            subtype = news_data["structured_subtype"]
-            symb = news_data["asset"]
-            if subtype == "earnings":
-                earnings = news_data["value"]
-            else:
-                new_signatures = news_data["new_signatures"]
-                cumulative = news_data["cumulative"]
-        else:
-            pass
+                self._trading_bot.assets["APT"].update_earnings(news_data["earnings"])
+                trades = self._trading_bot.assets["APT"].check_arbitrage(self.order_books["APT"])
+
+                if trades:
+                    for symbol, qty in trades.items():
+                        side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
+                        await self.place_order(symbol, abs(qty), side)
 
     async def view_books(self):
         while True:
