@@ -42,7 +42,7 @@ class ETF(Asset):
     """Base class for ETFs (AKAV, AKIM)."""
     def __init__(self, symbol: str):
         super().__init__(symbol)
-        self.FEE = 100
+        self.FEE = 5
 
 class AKAV(ETF):
     """ETF composed of APT, DLR, MKJ."""
@@ -147,6 +147,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         # Initialize TradingBot without modifying existing attributes
         self._trading_bot = TradingBot()
         self._last_prices = {}
+        self._mkt_implied_prices ={}
     
     # Original interface methods remain exactly the same
     async def bot_handle_cancel_response(self, order_id: str, success: bool, error: Optional[str]) -> None:
@@ -173,8 +174,13 @@ class MyXchangeClient(xchange_client.XChangeClient):
         book = self.order_books[symbol]
         if book.bids and book.asks:
             best_bid = max(book.bids.keys())
+            best_bid_vol = book.bids[best_bid]
+
             best_ask = min(book.asks.keys())
+            best_ask_vol = book.bids[best_ask]
+
             self._last_prices[symbol] = (best_bid + best_ask) / 2
+            self._mkt_implied_prices[symbol] = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
             self._trading_bot.update_market_data(self._last_prices)
 
     async def bot_handle_swap_response(self, swap: str, qty: int, success: bool):
