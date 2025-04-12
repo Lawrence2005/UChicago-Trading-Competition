@@ -27,7 +27,7 @@ class APT(Asset):
         super().__init__("APT")
 
 
-class DLR:
+class DLR(Asset):
     """
     DLR: Mid-cap stock tied to a binary petition outcome.
     Fair value is 100 if >=100,000 signatures are collected by the end of day 10, else 0.
@@ -63,6 +63,7 @@ class DLR:
         Monte Carlo simulation of signature growth to estimate probability of hitting 100,000.
         """
         final_counts = []
+        
         for _ in range(num_simulations):
             count = self.current_signatures
             for _ in range(num_days_left * 5):
@@ -72,6 +73,7 @@ class DLR:
 
         # Probability of reaching 100,000 signatures
         success_prob = np.mean(np.array(final_counts) >= 100000)
+
         return success_prob
 
     def compute_fair_value(self, current_day: int) -> float:
@@ -82,7 +84,17 @@ class DLR:
         if days_left <= 0:
             return 100.0 if self.current_signatures >= 100000 else 0.0
         prob = self.simulate_signature_paths(days_left)
+
         return 100 * prob
+    
+    def get_market_making_quotes(self, fair_value, spread=1.0):
+        bid = fair_value - 0.5 * spread
+        ask = fair_value + 0.5 * spread
+
+        return bid, ask
+
+
+
 
 
 class MKJ(Asset):
