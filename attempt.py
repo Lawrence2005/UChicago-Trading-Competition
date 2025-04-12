@@ -82,18 +82,21 @@ class DLR(Asset):
         """
         self.current_signatures = updated_signatures
         self.history.append(self.current_signatures)
+    
+    def update_timestep(self, timestamp: int):
+        self.time_step = timestamp
 
-    def calculate_ticks_left(self, timestamp: int):
-        period = (timestamp % 450) // 75
-        num_days_left = (10- (timestamp // 45 + 1)) * 5
+    def calculate_ticks_left(self):
+        period = (self.time_step % 450) // 75
+        num_days_left = (10- (self.timestep // 45 + 1)) * 5
         return num_days_left + 5 - period
 
-    def simulate_signature_paths(self, timestamp: int, num_simulations: int = 1000) -> float:
+    def simulate_signature_paths(self, num_simulations: int = 1000) -> float:
         """
         Monte Carlo simulation of signature growth to estimate probability of hitting 100,000.
         """
 
-        num_ticks_left = self.calculate_ticks_left(timestamp)
+        num_ticks_left = self.calculate_ticks_left()
         if num_ticks_left <= 0:  # End of evaluation period
             return 100.0 if self.current_signatures >= 100000 else 0.0
 
@@ -116,8 +119,8 @@ class DLR(Asset):
 
         return bid, ask
 
-    def check_arbitrage(self, timestamp: int) -> Optional[dict[str, tuple[int, int]]]:
-        fair = self.simulate_signature_paths(timestamp)
+    def check_arbitrage(self) -> Optional[dict[str, tuple[int, int]]]:
+        fair = self.simulate_signature_paths()
         bid, ask = self.get_market_making_quotes(fair)
         if self.price > fair:
             return {self.symbol: (-1, int(bid))}
@@ -348,9 +351,10 @@ class MyXchangeClient(xchange_client.XChangeClient):
         if news_release["kind"] == "structured":
             if news_data["asset"] == "DLR":
                 timestamp = news_release["timestamp"]
+                self._trading_bot.assets["DLR"].update_timestep(timestamp)
                 self._trading_bot.assets["DLR"].update_signatures(news_data["cumulative"])
                 trades = self._trading_bot.run_arbitrage("DLR")
-                print("TIMESTAMP: ", timestamp)
+                
             elif news_data["asset"] == "APT":
                 for order_id, order in list(self.open_orders.items()):
                     if order[0].symbol == "APT":
@@ -360,11 +364,11 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 self._trading_bot.assets["APT"].update_earnings(news_data["value"])
                 trades = self._trading_bot.run_arbitrage("APT")
 
-                if trades:
-                    for symbol in trades:
-                        qty = trades[symbol][0]
-                        side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
-                        await self.place_order(symbol, abs(qty), side, trades[symbol][1])
+            if trades:
+                for symbol in trades:
+                    qty = trades[symbol][0]
+                    side = xchange_client.Side.BUY if qty > 0 else xchange_client.Side.SELL
+                    await self.place_order(symbol, abs(qty), side, trades[symbol][1])
 
     async def view_books(self):
         while True:
