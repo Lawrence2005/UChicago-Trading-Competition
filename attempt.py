@@ -352,7 +352,9 @@ class MyXchangeClient(xchange_client.XChangeClient):
         news_data = news_release["new_data"]
         if news_release["kind"] == "structured":
             if news_data["asset"] == "DLR":
+                timestamp = news_release["timestamp"]
                 self._trading_bot.assets["DLR"].update_signatures(news_data["new_signatures"])
+                print("TIMESTAMP: ", timestamp)
             elif news_data["asset"] == "APT":
                 for order_id, order in list(self.open_orders.items()):
                     if order[0].symbol == "APT":
