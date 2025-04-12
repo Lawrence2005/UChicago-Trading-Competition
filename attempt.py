@@ -232,14 +232,14 @@ class TradingBot:
         for symbol, price in prices.items():
             self.assets[symbol].update_price(price)
 
-    def execute_trades(self, trades: Dict[str, tuple[int, int]]) -> bool:
+    def execute_trades(self, trades: Dict[str, int]) -> bool:
         if len(self.open_orders) + 1 > self.MAX_OPEN_ORDERS:
             print(f"[RISK] Blocked: MAX_OPEN_ORDERS ({self.MAX_OPEN_ORDERS}) reached")
             return False
         
         new_volume = 0
         for symbol in trades:
-            qty = trades[symbol][0]
+            qty = trades[symbol]
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
                 return False
