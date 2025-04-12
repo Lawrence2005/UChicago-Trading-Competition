@@ -411,7 +411,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
     # print("My positions:", self.positions)
 
 async def main():
-    my_client = MyXchangeClient('server.ucicagotradingcompetition25.com:3333',"chicago7","^DmqJY6UUp")
+    my_client = MyXchangeClient('server.uchicagotradingcompetition25.com:3333',"chicago7","^DmqJY6UUp")
     await my_client.start(None)
     return
 
