@@ -339,6 +339,7 @@ class MyXchangeClient(xchange_client.XChangeClient):
         pass 
 
     async def bot_handle_news(self, news_release: dict):
+        print(news_release)
         news_data = news_release["new_data"]
         if news_release["kind"] == "structured":
             if news_data["asset"] == "DLR":
