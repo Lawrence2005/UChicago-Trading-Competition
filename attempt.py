@@ -237,7 +237,8 @@ class TradingBot:
             return False
         
         new_volume = 0
-        for symbol, qty in trades.items():
+        for symbol in trades:
+            qty = trades[symbol][0]
             if abs(qty) > self.MAX_ORDER_SIZE:
                 print(f"[RISK] Blocked: Order for {symbol} exceeds MAX_ORDER_SIZE ({self.MAX_ORDER_SIZE})")
                 return False
