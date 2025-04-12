@@ -27,9 +27,72 @@ class APT(Asset):
         super().__init__("APT")
 
 class DLR(Asset):
-    """Mid-cap stock dependent on petition signatures."""
+    """Mid-cap stock dependent on petition signatures.
+    Fair = 100 if >=100,000 signatures are collected by the end of day 10, else 0.
+    Signature growth follows a lognormal process:
+        S_i ~ LogNormal(log(alpha) + log(S_{i-1}), sigma^2)
+    """
+
+    current_signatures: int
+    alpha: float
+    sigma: float
+    time_step: int
+    history: list[int]
+
     def __init__(self):
         super().__init__("DLR")
+        self.current_signatures = 5000  # initial value
+        self.alpha = 1.0630449594499
+        self.sigma = 0.006
+        self.time_step = 0  # current update index
+        self.history = [self.current_signatures]
+
+    def update_signatures(self, new_signatures: int):
+        """
+        Update current signature count based on news release.
+        Append to history and increment time step.
+        """
+        self.current_signatures += new_signatures
+        self.history.append(self.current_signatures)
+        self.time_step += 1
+
+    def simulate_signature_paths(self, num_days_left: int, num_simulations: int = 1000) -> float:
+        """
+        Monte Carlo simulation of signature growth to estimate probability of hitting 100,000.
+        """
+        final_counts = []
+        
+        for _ in range(num_simulations):
+            count = self.current_signatures
+            for _ in range(num_days_left * 5):
+                mu = np.log(self.alpha) + np.log(count)
+                count = np.random.lognormal(mean=mu, sigma=self.sigma)
+            final_counts.append(count)
+
+        # Probability of reaching 100,000 signatures
+        success_prob = np.mean(np.array(final_counts) >= 100000)
+
+        return success_prob
+
+    def compute_fair_value(self, current_day: int) -> float:
+        """
+        Estimate fair value as expected payout (100 or 0).
+        """
+        days_left = 10 - current_day
+        if days_left <= 0:
+            return 100.0 if self.current_signatures >= 100000 else 0.0
+        prob = self.simulate_signature_paths(days_left)
+
+        return 100 * prob
+    
+    def get_market_making_quotes(self, fair_value, spread=1.0):
+        bid = fair_value - 0.5 * spread
+        ask = fair_value + 0.5 * spread
+
+        return bid, ask
+
+    def check_arbitrage(self) -> Optional[dict[str, int]]:
+        ##TODO##
 
 class MKJ(Asset):
     """Small-cap stock with unstructured news."""
@@ -58,9 +121,9 @@ class AKAV(ETF):
     def check_arbitrage(self, assets: Dict[str, Asset]) -> Optional[Dict[str, int]]:
         """Return trades if arbitrage exists."""
         nav = self.calculate_nav(assets)
-        if self.price > nav + self.fee:
+        if self.price > nav + self.FEE:
             return {self.symbol: -1, **{symbol: 1 for symbol in self.components}}
-        elif self.price < nav - self.fee:
+        elif self.price < nav - self.FEE:
             return {self.symbol: 1, **{symbol: -1 for symbol in self.components}}
         return None
 
@@ -84,10 +147,10 @@ class TradingBot:
     def __init__(self):
         self.assets = {
             "APT": Asset("APT"),
-            "DLR": Asset("DLR"),  # Mid-cap stock
-            "MKJ": Asset("MKJ"),  # Small-cap stock
+            "DLR": Asset("DLR"),
+            "MKJ": Asset("MKJ"),
             "AKAV": AKAV(),
-            "AKIM": AKIM()   # Inverse ETF
+            "AKIM": AKIM()
         }
         self.open_orders = []
 
@@ -157,9 +220,9 @@ class MyXchangeClient(xchange_client.XChangeClient):
     async def bot_handle_order_fill(self, order_id: str, qty: int, price: int):
         # Update TradingBot positions while maintaining original print
         if order_id in self.open_orders:
-            symbol, side, _ = self.open_orders[order_id]
+            side = self.open_orders[order_id][0].side
             signed_qty = qty if side == xchange_client.Side.BUY else -qty
-            self._trading_bot.execute_trades({symbol: signed_qty})
+            self._trading_bot.execute_trades({self.open_orders[order_id][0].symbol: signed_qty})
         print("order fill", self.positions)
 
     async def bot_handle_order_rejected(self, order_id: str, reason: str) -> None:
