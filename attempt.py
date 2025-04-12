@@ -182,10 +182,12 @@ class MyXchangeClient(xchange_client.XChangeClient):
                 best_bid = max([price for price in book.bids.keys() if abs(book.bids[price]) > vol_filter])
 
             best_bid_vol = book.bids[best_bid]
-            best_ask_vol = book.bids[best_ask]
+            best_ask_vol = book.asks[best_ask]
 
             self._last_prices[symbol] = (best_bid + best_ask) / 2
-            self._mkt_implied_prices[symbol] = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
+            self._mkt_implied_prices[symbol] = self._last_prices[symbol] 
+            if best_bid_vol + best_ask_vol > 0:
+                self._mkt_implied_prices[symbol] = (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
             self._trading_bot.update_market_data(self._last_prices)
 
     async def bot_handle_swap_response(self, swap: str, qty: int, success: bool):
