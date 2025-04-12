@@ -88,7 +88,7 @@ class DLR(Asset):
 
     def calculate_ticks_left(self):
         period = (self.time_step % 450) // 75
-        num_days_left = (10- (self.timestep // 45 + 1)) * 5
+        num_days_left = (10- (self.time_step // 45 + 1)) * 5
         return num_days_left + 5 - period
 
     def simulate_signature_paths(self, num_simulations: int = 1000) -> float:
