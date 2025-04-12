@@ -228,7 +228,7 @@ class TradingBot:
         self.open_orders = []
         self.xclient = xchange_client
         if xchange_client:
-            self.sync_positions(xchange_client.positions)
+            self.sync_positions()
 
     def update_market_data(self, prices: Dict[str, float]) -> None:
         """Update all asset prices."""
