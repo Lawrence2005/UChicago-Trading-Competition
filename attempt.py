@@ -218,9 +218,9 @@ class TradingBot:
 
     def __init__(self):
         self.assets = {
-            "APT": APT("APT"),
-            "DLR": DLR("DLR"),
-            "MKJ": MKJ("MKJ"),
+            "APT": APT(),
+            "DLR": DLR(),
+            "MKJ": MKJ(),
             "AKAV": AKAV(),
             "AKIM": AKIM()
         }
